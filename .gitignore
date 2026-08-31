@@ -38,3 +38,6 @@ out/
 
 # Local environment variables / secrets
 .env
+
+# Local Gradle user home (wrapper cache), not project source
+.gradle-user-home/
