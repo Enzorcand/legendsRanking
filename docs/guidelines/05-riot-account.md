@@ -15,7 +15,7 @@ Implementar apenas:
 - `RiotAccountRepository`;
 - `RiotAccountService`, orquestrando `RiotApiClient` + persistência + regras de unicidade;
 - exceções de domínio para conta já vinculada / puuid já usado por outro usuário;
-- `RiotAccountController` com `POST /api/me/riot-account` e `DELETE /api/me/riot-account`;
+- `RiotAccountController` com `POST /api/me/riot-account/link` e `DELETE /api/me/riot-account/unlink`;
 - DTOs de request/response que não exponham `puuid` publicamente (ver privacidade);
 - resolução do usuário autenticado a partir do JWT já validado pelo `JwtAuthenticationFilter`, apenas o suficiente para estes dois endpoints;
 - testes unitários de serviço e testes de controller/segurança.
@@ -49,7 +49,7 @@ Persiste RiotAccount (puuid, gameName, tagLine, region, user)
 Retorna dados públicos da conta vinculada (sem puuid)
 ```
 
-`DELETE /api/me/riot-account` apenas remove o vínculo do usuário autenticado (sem chamar a Riot API). Definir explicitamente nesta etapa se a remoção é um hard delete da linha em `riot_accounts` ou uma desvinculação lógica — recomendação: hard delete da `RiotAccount`, já que nenhuma partida/estatística ainda está associada a ela nesta etapa (isso muda a partir da etapa 12/13, quando `Match`/`PlayerStats` passarem a referenciar `RiotAccount`, e a remoção precisará ser revisitada).
+`DELETE /api/me/riot-account/unlink` apenas remove o vínculo do usuário autenticado (sem chamar a Riot API). Definir explicitamente nesta etapa se a remoção é um hard delete da linha em `riot_accounts` ou uma desvinculação lógica — recomendação: hard delete da `RiotAccount`, já que nenhuma partida/estatística ainda está associada a ela nesta etapa (isso muda a partir da etapa 12/13, quando `Match`/`PlayerStats` passarem a referenciar `RiotAccount`, e a remoção precisará ser revisitada).
 
 ## Banco de dados
 
@@ -101,7 +101,7 @@ portfolio.pucrs.riot
 ## Contrato HTTP
 
 ```http
-POST /api/me/riot-account
+POST /api/me/riot-account/link
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -123,7 +123,7 @@ Resposta `201 Created`:
 ```
 
 ```http
-DELETE /api/me/riot-account
+DELETE /api/me/riot-account/unlink
 Authorization: Bearer <token>
 ```
 
@@ -145,8 +145,8 @@ Ambos exigem autenticação (`401` sem token válido). Erros de negócio:
 Adicionar em `SecurityConfig`:
 
 ```text
-POST   /api/me/riot-account    → autenticado
-DELETE /api/me/riot-account    → autenticado
+POST   /api/me/riot-account/link      → autenticado
+DELETE /api/me/riot-account/unlink    → autenticado
 ```
 
 Como `/api/me/**` ainda não tem um controller de perfil completo (etapa 08 não implementada), resolver o usuário autenticado localmente nesta etapa via o `Authentication`/`principal` (userId) já populado por `JwtAuthenticationFilter`, sem construir um mecanismo novo de "usuário atual" — reaproveitar o que a etapa de auth já fornece.

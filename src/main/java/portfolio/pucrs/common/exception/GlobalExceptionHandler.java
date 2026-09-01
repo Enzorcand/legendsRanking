@@ -8,6 +8,11 @@ import portfolio.pucrs.auth.exception.EmailAlreadyRegisteredException;
 import portfolio.pucrs.auth.exception.InvalidCourseException;
 import portfolio.pucrs.auth.exception.InvalidCredentialsException;
 import portfolio.pucrs.auth.exception.InvalidRegistrationException;
+import portfolio.pucrs.auth.exception.InvalidVerificationCodeException;
+import portfolio.pucrs.riot.exception.DuplicateRiotAccountException;
+import portfolio.pucrs.riot.exception.RiotAccountAlreadyLinkedException;
+import portfolio.pucrs.riot.exception.RiotAccountNotLinkedException;
+import portfolio.pucrs.riot.exception.RiotApiException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -20,7 +25,7 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.CONFLICT, e.getMessage());
     }
 
-    @ExceptionHandler({InvalidCourseException.class, InvalidRegistrationException.class})
+    @ExceptionHandler({InvalidCourseException.class, InvalidRegistrationException.class, InvalidVerificationCodeException.class})
     public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException e) {
         return errorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
@@ -28,6 +33,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidCredentials(InvalidCredentialsException e) {
         return errorResponse(HttpStatus.UNAUTHORIZED, e.getMessage());
+    }
+
+    @ExceptionHandler({RiotAccountAlreadyLinkedException.class, DuplicateRiotAccountException.class})
+    public ResponseEntity<Map<String, Object>> handleRiotAccountConflict(RuntimeException e) {
+        return errorResponse(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(RiotAccountNotLinkedException.class)
+    public ResponseEntity<Map<String, Object>> handleRiotAccountNotLinked(RiotAccountNotLinkedException e) {
+        return errorResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(RiotApiException.class)
+    public ResponseEntity<Map<String, Object>> handleRiotApiException(RiotApiException e) {
+        return errorResponse(HttpStatus.valueOf(e.getStatus()), e.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> errorResponse(HttpStatus status, String message) {

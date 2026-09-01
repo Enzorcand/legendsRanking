@@ -31,16 +31,19 @@ public class AuthService {
     private final CourseRepository courseRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthService(
             UserRepository userRepository,
             CourseRepository courseRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService) {
+            JwtService jwtService,
+            EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     public UserSummaryResponse register(RegisterRequest request) {
@@ -64,6 +67,7 @@ public class AuthService {
         user.setCourse(course);
 
         User saved = userRepository.save(user);
+        emailVerificationService.sendVerificationCode(saved);
         return new UserSummaryResponse(saved.getId(), saved.getFullName());
     }
 

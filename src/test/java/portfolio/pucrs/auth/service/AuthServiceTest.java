@@ -32,8 +32,9 @@ class AuthServiceTest {
     private final CourseRepository courseRepository = mock(CourseRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtService jwtService = new JwtService("test-only-secret-key-with-at-least-32-bytes", 60);
+    private final EmailVerificationService emailVerificationService = mock(EmailVerificationService.class);
     private final AuthService authService =
-            new AuthService(userRepository, courseRepository, passwordEncoder, jwtService);
+            new AuthService(userRepository, courseRepository, passwordEncoder, jwtService, emailVerificationService);
 
     private Course activeCourse() {
         Course course = new Course();
@@ -58,6 +59,7 @@ class AuthServiceTest {
 
         assertEquals(new UserSummaryResponse(10L, "Ana Raposa"), response);
         verify(userRepository).save(any(User.class));
+        verify(emailVerificationService).sendVerificationCode(any(User.class));
     }
 
     @Test

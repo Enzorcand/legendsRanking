@@ -6,17 +6,22 @@ import org.springframework.http.ResponseEntity;
 import portfolio.pucrs.auth.dto.AuthResponse;
 import portfolio.pucrs.auth.dto.LoginRequest;
 import portfolio.pucrs.auth.dto.RegisterRequest;
+import portfolio.pucrs.auth.dto.ResendVerificationRequest;
+import portfolio.pucrs.auth.dto.VerifyEmailRequest;
 import portfolio.pucrs.auth.service.AuthService;
+import portfolio.pucrs.auth.service.EmailVerificationService;
 import portfolio.pucrs.user.dto.UserSummaryResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AuthControllerTest {
 
     private final AuthService authService = mock(AuthService.class);
-    private final AuthController authController = new AuthController(authService);
+    private final EmailVerificationService emailVerificationService = mock(EmailVerificationService.class);
+    private final AuthController authController = new AuthController(authService, emailVerificationService);
 
     @Test
     void registersAUserAndReturns201() {
@@ -39,5 +44,25 @@ class AuthControllerTest {
         AuthResponse response = authController.login(request);
 
         assertEquals(expected, response);
+    }
+
+    @Test
+    void verifiesTheEmailAndReturns200() {
+        VerifyEmailRequest request = new VerifyEmailRequest("aluno@pucrs.br", "123456");
+
+        ResponseEntity<Void> response = authController.verifyEmail(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(emailVerificationService).verifyCode("aluno@pucrs.br", "123456");
+    }
+
+    @Test
+    void resendsTheVerificationCodeAndReturns202() {
+        ResendVerificationRequest request = new ResendVerificationRequest("aluno@pucrs.br");
+
+        ResponseEntity<Void> response = authController.resendVerification(request);
+
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(emailVerificationService).resendVerificationCode("aluno@pucrs.br");
     }
 }
