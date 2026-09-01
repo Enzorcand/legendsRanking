@@ -1,5 +1,7 @@
 package portfolio.pucrs.riot.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,17 +20,22 @@ import portfolio.pucrs.user.repository.UserRepository;
 @Transactional
 public class RiotAccountService {
 
+    private static final Logger log = LoggerFactory.getLogger(RiotAccountService.class);
+
     private final RiotAccountRepository riotAccountRepository;
     private final UserRepository userRepository;
     private final RiotApiClient riotApiClient;
+    private final RankedSyncService rankedSyncService;
 
     public RiotAccountService(
             RiotAccountRepository riotAccountRepository,
             UserRepository userRepository,
-            RiotApiClient riotApiClient) {
+            RiotApiClient riotApiClient,
+            RankedSyncService rankedSyncService) {
         this.riotAccountRepository = riotAccountRepository;
         this.userRepository = userRepository;
         this.riotApiClient = riotApiClient;
+        this.rankedSyncService = rankedSyncService;
     }
 
     public RiotAccountResponse linkAccount(Long userId, LinkRiotAccountRequest request) {
@@ -54,6 +61,12 @@ public class RiotAccountService {
             saved = riotAccountRepository.save(riotAccount);
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateRiotAccountException();
+        }
+
+        try {
+            rankedSyncService.syncRankedStats(saved);
+        } catch (RuntimeException e) {
+            log.warn("Initial ranked sync failed for riot account {}: {}", saved.getId(), e.getMessage());
         }
 
         return toResponse(saved);

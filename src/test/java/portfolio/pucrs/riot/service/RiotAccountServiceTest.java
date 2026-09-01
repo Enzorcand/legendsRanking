@@ -20,6 +20,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,8 +31,9 @@ class RiotAccountServiceTest {
     private final RiotAccountRepository riotAccountRepository = mock(RiotAccountRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final RiotApiClient riotApiClient = mock(RiotApiClient.class);
+    private final RankedSyncService rankedSyncService = mock(RankedSyncService.class);
     private final RiotAccountService riotAccountService =
-            new RiotAccountService(riotAccountRepository, userRepository, riotApiClient);
+            new RiotAccountService(riotAccountRepository, userRepository, riotApiClient, rankedSyncService);
 
     private static final LinkRiotAccountRequest REQUEST = new LinkRiotAccountRequest("Raposa", "BR1", Region.BR1);
 
@@ -43,6 +45,23 @@ class RiotAccountServiceTest {
         when(riotAccountRepository.existsByPuuid("puuid-1")).thenReturn(false);
         when(userRepository.getReferenceById(1L)).thenReturn(new User());
         when(riotAccountRepository.save(any(RiotAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RiotAccountResponse response = riotAccountService.linkAccount(1L, REQUEST);
+
+        assertEquals(new RiotAccountResponse("Raposa", "BR1", Region.BR1), response);
+        verify(rankedSyncService).syncRankedStats(any(RiotAccount.class));
+    }
+
+    @Test
+    void stillLinksTheAccountWhenTheInitialRankedSyncFails() {
+        when(riotAccountRepository.existsByUserId(1L)).thenReturn(false);
+        when(riotApiClient.getAccountByRiotId("Raposa", "BR1"))
+                .thenReturn(new RiotAccountDto("puuid-1", "Raposa", "BR1"));
+        when(riotAccountRepository.existsByPuuid("puuid-1")).thenReturn(false);
+        when(userRepository.getReferenceById(1L)).thenReturn(new User());
+        when(riotAccountRepository.save(any(RiotAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new RuntimeException("Riot API unavailable"))
+                .when(rankedSyncService).syncRankedStats(any(RiotAccount.class));
 
         RiotAccountResponse response = riotAccountService.linkAccount(1L, REQUEST);
 
