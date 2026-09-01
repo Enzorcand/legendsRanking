@@ -39,6 +39,9 @@ public class RiotAccount {
     @JoinColumn(name = "ranked_stats_id")
     private RankedStats rankedStats;
 
+    @OneToOne(mappedBy = "riotAccount", fetch = FetchType.LAZY)
+    private PlayerStats playerStats;
+
     @Column(unique = true, length = 100)
     private String puuid;
 

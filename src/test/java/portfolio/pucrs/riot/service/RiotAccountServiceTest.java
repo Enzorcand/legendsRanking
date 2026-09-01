@@ -7,12 +7,14 @@ import portfolio.pucrs.riot.client.RiotApiClient;
 import portfolio.pucrs.riot.client.dto.RiotAccountDto;
 import portfolio.pucrs.riot.dto.LinkRiotAccountRequest;
 import portfolio.pucrs.riot.dto.RiotAccountResponse;
+import portfolio.pucrs.riot.entity.PlayerStats;
 import portfolio.pucrs.riot.entity.RankedStats;
 import portfolio.pucrs.riot.entity.Region;
 import portfolio.pucrs.riot.entity.RiotAccount;
 import portfolio.pucrs.riot.exception.DuplicateRiotAccountException;
 import portfolio.pucrs.riot.exception.RiotAccountAlreadyLinkedException;
 import portfolio.pucrs.riot.exception.RiotAccountNotLinkedException;
+import portfolio.pucrs.riot.repository.PlayerStatsRepository;
 import portfolio.pucrs.riot.repository.RankedStatsRepository;
 import portfolio.pucrs.riot.repository.RiotAccountRepository;
 import portfolio.pucrs.user.entity.User;
@@ -33,13 +35,14 @@ class RiotAccountServiceTest {
 
     private final RiotAccountRepository riotAccountRepository = mock(RiotAccountRepository.class);
     private final RankedStatsRepository rankedStatsRepository = mock(RankedStatsRepository.class);
+    private final PlayerStatsRepository playerStatsRepository = mock(PlayerStatsRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final RiotApiClient riotApiClient = mock(RiotApiClient.class);
     private final RankedSyncService rankedSyncService = mock(RankedSyncService.class);
     private final MatchSyncService matchSyncService = mock(MatchSyncService.class);
     private final PlayerStatsService playerStatsService = mock(PlayerStatsService.class);
     private final RiotAccountService riotAccountService = new RiotAccountService(
-            riotAccountRepository, rankedStatsRepository, userRepository, riotApiClient,
+            riotAccountRepository, rankedStatsRepository, playerStatsRepository, userRepository, riotApiClient,
             rankedSyncService, matchSyncService, playerStatsService);
 
     private static final LinkRiotAccountRequest REQUEST = new LinkRiotAccountRequest("Raposa", "BR1", Region.BR1);
@@ -152,6 +155,7 @@ class RiotAccountServiceTest {
 
         verify(riotAccountRepository).delete(riotAccount);
         verify(rankedStatsRepository, never()).delete(any());
+        verify(playerStatsRepository, never()).delete(any());
     }
 
     @Test
@@ -165,6 +169,20 @@ class RiotAccountServiceTest {
 
         verify(riotAccountRepository).delete(riotAccount);
         verify(rankedStatsRepository).delete(rankedStats);
+    }
+
+    @Test
+    void alsoDeletesTheDetachedPlayerStatsWhenUnlinkingAnAccountThatHasOne() {
+        RiotAccount riotAccount = new RiotAccount();
+        PlayerStats playerStats = new PlayerStats();
+        riotAccount.setPlayerStats(playerStats);
+        when(riotAccountRepository.findByUserId(1L)).thenReturn(Optional.of(riotAccount));
+
+        riotAccountService.unlinkAccount(1L);
+
+        verify(playerStatsRepository).delete(playerStats);
+        assertEquals(null, riotAccount.getPlayerStats());
+        verify(riotAccountRepository).delete(riotAccount);
     }
 
     @Test

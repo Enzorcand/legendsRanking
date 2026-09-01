@@ -13,6 +13,7 @@ import portfolio.pucrs.riot.exception.DuplicateRiotAccountException;
 import portfolio.pucrs.riot.exception.RiotAccountAlreadyLinkedException;
 import portfolio.pucrs.riot.exception.RiotAccountNotLinkedException;
 import portfolio.pucrs.riot.exception.RiotApiException;
+import portfolio.pucrs.user.exception.PlayerNotFoundException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -40,8 +41,8 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.CONFLICT, e.getMessage());
     }
 
-    @ExceptionHandler(RiotAccountNotLinkedException.class)
-    public ResponseEntity<Map<String, Object>> handleRiotAccountNotLinked(RiotAccountNotLinkedException e) {
+    @ExceptionHandler({RiotAccountNotLinkedException.class, PlayerNotFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException e) {
         return errorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 

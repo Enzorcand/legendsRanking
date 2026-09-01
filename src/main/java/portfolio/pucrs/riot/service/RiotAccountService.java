@@ -10,11 +10,13 @@ import portfolio.pucrs.riot.client.RiotApiClient;
 import portfolio.pucrs.riot.client.dto.RiotAccountDto;
 import portfolio.pucrs.riot.dto.LinkRiotAccountRequest;
 import portfolio.pucrs.riot.dto.RiotAccountResponse;
+import portfolio.pucrs.riot.entity.PlayerStats;
 import portfolio.pucrs.riot.entity.RankedStats;
 import portfolio.pucrs.riot.entity.RiotAccount;
 import portfolio.pucrs.riot.exception.DuplicateRiotAccountException;
 import portfolio.pucrs.riot.exception.RiotAccountAlreadyLinkedException;
 import portfolio.pucrs.riot.exception.RiotAccountNotLinkedException;
+import portfolio.pucrs.riot.repository.PlayerStatsRepository;
 import portfolio.pucrs.riot.repository.RankedStatsRepository;
 import portfolio.pucrs.riot.repository.RiotAccountRepository;
 import portfolio.pucrs.user.repository.UserRepository;
@@ -27,6 +29,7 @@ public class RiotAccountService {
 
     private final RiotAccountRepository riotAccountRepository;
     private final RankedStatsRepository rankedStatsRepository;
+    private final PlayerStatsRepository playerStatsRepository;
     private final UserRepository userRepository;
     private final RiotApiClient riotApiClient;
     private final RankedSyncService rankedSyncService;
@@ -36,6 +39,7 @@ public class RiotAccountService {
     public RiotAccountService(
             RiotAccountRepository riotAccountRepository,
             RankedStatsRepository rankedStatsRepository,
+            PlayerStatsRepository playerStatsRepository,
             UserRepository userRepository,
             RiotApiClient riotApiClient,
             RankedSyncService rankedSyncService,
@@ -43,6 +47,7 @@ public class RiotAccountService {
             PlayerStatsService playerStatsService) {
         this.riotAccountRepository = riotAccountRepository;
         this.rankedStatsRepository = rankedStatsRepository;
+        this.playerStatsRepository = playerStatsRepository;
         this.userRepository = userRepository;
         this.riotApiClient = riotApiClient;
         this.rankedSyncService = rankedSyncService;
@@ -101,8 +106,20 @@ public class RiotAccountService {
                 .orElseThrow(RiotAccountNotLinkedException::new);
 
         RankedStats rankedStats = riotAccount.getRankedStats();
+        PlayerStats playerStats = riotAccount.getPlayerStats();
 
-        // Matches and PlayerStats are removed by ON DELETE CASCADE (see V8 migration).
+        // PlayerStats is deleted explicitly (and detached first) instead of relying only on
+        // ON DELETE CASCADE: Hibernate's flush-time transient-reference check walks the
+        // bidirectional RiotAccount.playerStats mapping and errors out if a PlayerStats row
+        // still points at a RiotAccount that is queued for deletion.
+        if (playerStats != null) {
+            riotAccount.setPlayerStats(null);
+            playerStatsRepository.delete(playerStats);
+        }
+
+        // Matches are removed by ON DELETE CASCADE (see V8 migration) — there is no
+        // bidirectional mapping from RiotAccount to Match, so Hibernate never loads them
+        // and the check above doesn't apply.
         // RankedStats is referenced the other way around (riot_accounts.ranked_stats_id),
         // so it has to be deleted explicitly, after the RiotAccount row stops pointing to it.
         riotAccountRepository.delete(riotAccount);

@@ -11,6 +11,8 @@ import portfolio.pucrs.riot.repository.RankedStatsRepository;
 import portfolio.pucrs.riot.repository.RiotAccountRepository;
 import portfolio.pucrs.season.entity.Season;
 import portfolio.pucrs.season.repository.SeasonRepository;
+import portfolio.pucrs.user.entity.User;
+import portfolio.pucrs.user.repository.UserRepository;
 
 import java.util.List;
 import java.util.Locale;
@@ -26,16 +28,19 @@ public class RankedSyncService {
     private final RankedStatsRepository rankedStatsRepository;
     private final RiotAccountRepository riotAccountRepository;
     private final SeasonRepository seasonRepository;
+    private final UserRepository userRepository;
 
     public RankedSyncService(
             RiotApiClient riotApiClient,
             RankedStatsRepository rankedStatsRepository,
             RiotAccountRepository riotAccountRepository,
-            SeasonRepository seasonRepository) {
+            SeasonRepository seasonRepository,
+            UserRepository userRepository) {
         this.riotApiClient = riotApiClient;
         this.rankedStatsRepository = rankedStatsRepository;
         this.riotAccountRepository = riotAccountRepository;
         this.seasonRepository = seasonRepository;
+        this.userRepository = userRepository;
     }
 
     public void syncRankedStats(RiotAccount riotAccount) {
@@ -53,9 +58,8 @@ public class RankedSyncService {
         Season activeSeason = seasonRepository.findByActiveTrue()
                 .orElseThrow(() -> new IllegalStateException("No active season configured"));
 
-        RankedStats rankedStats = riotAccount.getRankedStats() != null
-                ? riotAccount.getRankedStats()
-                : new RankedStats();
+        boolean isFirstTimeRanked = riotAccount.getRankedStats() == null;
+        RankedStats rankedStats = isFirstTimeRanked ? new RankedStats() : riotAccount.getRankedStats();
 
         rankedStats.setSeason(activeSeason);
         rankedStats.setTier(Tier.valueOf(entry.tier().toUpperCase(Locale.ROOT)));
@@ -67,5 +71,11 @@ public class RankedSyncService {
         RankedStats saved = rankedStatsRepository.save(rankedStats);
         riotAccount.setRankedStats(saved);
         riotAccountRepository.save(riotAccount);
+
+        if (isFirstTimeRanked) {
+            User user = riotAccount.getUser();
+            user.setRankingEligible(true);
+            userRepository.save(user);
+        }
     }
 }

@@ -10,14 +10,18 @@ import portfolio.pucrs.riot.repository.RankedStatsRepository;
 import portfolio.pucrs.riot.repository.RiotAccountRepository;
 import portfolio.pucrs.season.entity.Season;
 import portfolio.pucrs.season.repository.SeasonRepository;
+import portfolio.pucrs.user.entity.User;
+import portfolio.pucrs.user.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -30,13 +34,15 @@ class RankedSyncServiceTest {
     private final RankedStatsRepository rankedStatsRepository = mock(RankedStatsRepository.class);
     private final RiotAccountRepository riotAccountRepository = mock(RiotAccountRepository.class);
     private final SeasonRepository seasonRepository = mock(SeasonRepository.class);
-    private final RankedSyncService rankedSyncService =
-            new RankedSyncService(riotApiClient, rankedStatsRepository, riotAccountRepository, seasonRepository);
+    private final UserRepository userRepository = mock(UserRepository.class);
+    private final RankedSyncService rankedSyncService = new RankedSyncService(
+            riotApiClient, rankedStatsRepository, riotAccountRepository, seasonRepository, userRepository);
 
     private RiotAccount riotAccount() {
         RiotAccount riotAccount = new RiotAccount();
         riotAccount.setId(1L);
         riotAccount.setPuuid("puuid-1");
+        riotAccount.setUser(new User());
         return riotAccount;
     }
 
@@ -65,6 +71,8 @@ class RankedSyncServiceTest {
         assertEquals(40, riotAccount.getRankedStats().getWins());
         assertEquals(30, riotAccount.getRankedStats().getLosses());
         verify(riotAccountRepository).save(riotAccount);
+        assertTrue(riotAccount.getUser().isRankingEligible());
+        verify(userRepository).save(riotAccount.getUser());
     }
 
     @Test
@@ -107,5 +115,25 @@ class RankedSyncServiceTest {
         assertSame(existing, riotAccount.getRankedStats());
         assertEquals(Tier.PLATINUM, existing.getTier());
         assertEquals(9L, existing.getId());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void doesNotForceRankingEligibilityBackOnAResyncOfAnAlreadyRankedAccount() {
+        RiotAccount riotAccount = riotAccount();
+        riotAccount.getUser().setRankingEligible(false);
+        RankedStats existing = new RankedStats();
+        existing.setId(9L);
+        riotAccount.setRankedStats(existing);
+
+        when(riotApiClient.getLeagueEntriesByPuuid("puuid-1")).thenReturn(List.of(
+                new LeagueEntryDto("puuid-1", "RANKED_SOLO_5x5", "PLATINUM", "I", 10, 51, 45)));
+        when(seasonRepository.findByActiveTrue()).thenReturn(Optional.of(activeSeason()));
+        when(rankedStatsRepository.save(any(RankedStats.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        rankedSyncService.syncRankedStats(riotAccount);
+
+        assertFalse(riotAccount.getUser().isRankingEligible());
+        verify(userRepository, never()).save(any());
     }
 }
