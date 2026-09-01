@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 @Transactional
 public class AuthService {
 
-    private static final Pattern INSTITUTIONAL_EMAIL = Pattern.compile("^[^@\\s]+@pucrs\\.br$");
+    private static final Pattern INSTITUTIONAL_EMAIL = Pattern.compile("^[^@\\s]+@edu\\.pucrs\\.br$");
     private static final int MIN_PASSWORD_LENGTH = 8;
 
     private final UserRepository userRepository;

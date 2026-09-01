@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import portfolio.pucrs.match.service.MatchSyncService;
 import portfolio.pucrs.riot.client.RiotApiClient;
 import portfolio.pucrs.riot.client.dto.RiotAccountDto;
 import portfolio.pucrs.riot.dto.LinkRiotAccountRequest;
@@ -26,16 +27,19 @@ public class RiotAccountService {
     private final UserRepository userRepository;
     private final RiotApiClient riotApiClient;
     private final RankedSyncService rankedSyncService;
+    private final MatchSyncService matchSyncService;
 
     public RiotAccountService(
             RiotAccountRepository riotAccountRepository,
             UserRepository userRepository,
             RiotApiClient riotApiClient,
-            RankedSyncService rankedSyncService) {
+            RankedSyncService rankedSyncService,
+            MatchSyncService matchSyncService) {
         this.riotAccountRepository = riotAccountRepository;
         this.userRepository = userRepository;
         this.riotApiClient = riotApiClient;
         this.rankedSyncService = rankedSyncService;
+        this.matchSyncService = matchSyncService;
     }
 
     public RiotAccountResponse linkAccount(Long userId, LinkRiotAccountRequest request) {
@@ -67,6 +71,12 @@ public class RiotAccountService {
             rankedSyncService.syncRankedStats(saved);
         } catch (RuntimeException e) {
             log.warn("Initial ranked sync failed for riot account {}: {}", saved.getId(), e.getMessage());
+        }
+
+        try {
+            matchSyncService.syncMatches(saved);
+        } catch (RuntimeException e) {
+            log.warn("Initial match sync failed for riot account {}: {}", saved.getId(), e.getMessage());
         }
 
         return toResponse(saved);

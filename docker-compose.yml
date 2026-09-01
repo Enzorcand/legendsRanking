@@ -11,9 +11,23 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-aaac_ranking}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-aaac_ranking}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: 1025
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@aaac-ranking.pucrs.br}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-32-bytes-minimum}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
+      RIOT_API_KEY: ${RIOT_API_KEY:?Defina RIOT_API_KEY no arquivo .env}
+      RIOT_PLATFORM: ${RIOT_PLATFORM:-br1}
+      RIOT_CONTINENT: ${RIOT_CONTINENT:-americas}
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     restart: unless-stopped
 
   db:
@@ -32,6 +46,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
     restart: unless-stopped
 
 volumes:

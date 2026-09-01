@@ -1,0 +1,191 @@
+{
+  "info": {
+    "name": "AAAC Ranking - Fluxo completo",
+    "description": "Cadastro -> verificacao de e-mail -> login -> perfil -> vinculo de conta Riot, na ordem que deve ser executada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Cursos",
+      "item": [
+        {
+          "name": "Listar cursos ativos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/courses", "host": ["{{baseUrl}}"], "path": ["api", "courses"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const courses = pm.response.json();",
+                  "if (Array.isArray(courses) && courses.length > 0) {",
+                  "    pm.environment.set('courseId', courses[0].id);",
+                  "    console.log('courseId definido para', courses[0].id);",
+                  "} else {",
+                  "    console.warn('Nenhum curso ativo encontrado - cadastre um curso antes de continuar.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Autenticacao",
+      "item": [
+        {
+          "name": "Registrar usuario",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Raposa\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"courseId\": {{courseId}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Verificar e-mail",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{verificationCode}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/verify-email", "host": ["{{baseUrl}}"], "path": ["api", "auth", "verify-email"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Reenviar codigo de verificacao (opcional)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/resend-verification", "host": ["{{baseUrl}}"], "path": ["api", "auth", "resend-verification"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.token) {",
+                  "    pm.environment.set('token', body.token);",
+                  "    console.log('token JWT salvo na variavel de ambiente');",
+                  "} else {",
+                  "    console.warn('Login nao retornou token - confira email/senha e verificacao.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Perfil",
+      "item": [
+        {
+          "name": "Ver meu perfil",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/me", "host": ["{{baseUrl}}"], "path": ["api", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Editar nome/curso",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Raposa Atualizada\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/me", "host": ["{{baseUrl}}"], "path": ["api", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Alternar participacao no ranking",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/me/ranking", "host": ["{{baseUrl}}"], "path": ["api", "me", "ranking"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Conta Riot",
+      "item": [
+        {
+          "name": "Vincular conta Riot",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameName\": \"{{gameName}}\",\n  \"tagLine\": \"{{tagLine}}\",\n  \"region\": \"{{region}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/me/riot-account/link", "host": ["{{baseUrl}}"], "path": ["api", "me", "riot-account", "link"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Ver perfil com conta Riot vinculada",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/me", "host": ["{{baseUrl}}"], "path": ["api", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Desvincular conta Riot",
+          "request": {
+            "method": "DELETE",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/me/riot-account/unlink", "host": ["{{baseUrl}}"], "path": ["api", "me", "riot-account", "unlink"] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

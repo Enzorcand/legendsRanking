@@ -2,6 +2,7 @@ package portfolio.pucrs.riot.service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import portfolio.pucrs.match.service.MatchSyncService;
 import portfolio.pucrs.riot.client.RiotApiClient;
 import portfolio.pucrs.riot.client.dto.RiotAccountDto;
 import portfolio.pucrs.riot.dto.LinkRiotAccountRequest;
@@ -32,8 +33,9 @@ class RiotAccountServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final RiotApiClient riotApiClient = mock(RiotApiClient.class);
     private final RankedSyncService rankedSyncService = mock(RankedSyncService.class);
-    private final RiotAccountService riotAccountService =
-            new RiotAccountService(riotAccountRepository, userRepository, riotApiClient, rankedSyncService);
+    private final MatchSyncService matchSyncService = mock(MatchSyncService.class);
+    private final RiotAccountService riotAccountService = new RiotAccountService(
+            riotAccountRepository, userRepository, riotApiClient, rankedSyncService, matchSyncService);
 
     private static final LinkRiotAccountRequest REQUEST = new LinkRiotAccountRequest("Raposa", "BR1", Region.BR1);
 
@@ -50,6 +52,7 @@ class RiotAccountServiceTest {
 
         assertEquals(new RiotAccountResponse("Raposa", "BR1", Region.BR1), response);
         verify(rankedSyncService).syncRankedStats(any(RiotAccount.class));
+        verify(matchSyncService).syncMatches(any(RiotAccount.class));
     }
 
     @Test
@@ -62,6 +65,23 @@ class RiotAccountServiceTest {
         when(riotAccountRepository.save(any(RiotAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doThrow(new RuntimeException("Riot API unavailable"))
                 .when(rankedSyncService).syncRankedStats(any(RiotAccount.class));
+
+        RiotAccountResponse response = riotAccountService.linkAccount(1L, REQUEST);
+
+        assertEquals(new RiotAccountResponse("Raposa", "BR1", Region.BR1), response);
+        verify(matchSyncService).syncMatches(any(RiotAccount.class));
+    }
+
+    @Test
+    void stillLinksTheAccountWhenTheInitialMatchSyncFails() {
+        when(riotAccountRepository.existsByUserId(1L)).thenReturn(false);
+        when(riotApiClient.getAccountByRiotId("Raposa", "BR1"))
+                .thenReturn(new RiotAccountDto("puuid-1", "Raposa", "BR1"));
+        when(riotAccountRepository.existsByPuuid("puuid-1")).thenReturn(false);
+        when(userRepository.getReferenceById(1L)).thenReturn(new User());
+        when(riotAccountRepository.save(any(RiotAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new RuntimeException("Riot API unavailable"))
+                .when(matchSyncService).syncMatches(any(RiotAccount.class));
 
         RiotAccountResponse response = riotAccountService.linkAccount(1L, REQUEST);
 
