@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import portfolio.pucrs.common.security.AuthenticatedUser;
 import portfolio.pucrs.riot.dto.LinkRiotAccountRequest;
 import portfolio.pucrs.riot.dto.RiotAccountResponse;
 import portfolio.pucrs.riot.service.RiotAccountService;
@@ -24,15 +25,13 @@ public class RiotAccountController {
 
     @PostMapping("/link")
     public ResponseEntity<RiotAccountResponse> link(Authentication authentication, @RequestBody LinkRiotAccountRequest request) {
-        Long userId = (Long) authentication.getPrincipal();
-        RiotAccountResponse response = riotAccountService.linkAccount(userId, request);
+        RiotAccountResponse response = riotAccountService.linkAccount(AuthenticatedUser.id(authentication), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @DeleteMapping("/unlink")
     public ResponseEntity<Void> unlink(Authentication authentication) {
-        Long userId = (Long) authentication.getPrincipal();
-        riotAccountService.unlinkAccount(userId);
+        riotAccountService.unlinkAccount(AuthenticatedUser.id(authentication));
         return ResponseEntity.noContent().build();
     }
 }

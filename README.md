@@ -117,6 +117,10 @@ POST   /api/auth/resend-verification   (público)
 
 GET    /api/courses                    (público)
 
+GET    /api/me                         (autenticado)
+PATCH  /api/me                         (autenticado)
+PATCH  /api/me/ranking                 (autenticado — alterna entrar/sair do ranking)
+
 POST   /api/me/riot-account/link       (autenticado)
 DELETE /api/me/riot-account/unlink     (autenticado)
 ```
