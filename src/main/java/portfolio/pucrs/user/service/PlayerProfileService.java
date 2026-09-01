@@ -29,6 +29,10 @@ public class PlayerProfileService {
         return toPublicResponse(getViewableUser(id));
     }
 
+    public RiotAccount getViewableRiotAccount(Long id) {
+        return getViewableUser(id).getRiotAccount();
+    }
+
     public AuthenticatedPlayerResponse getAuthenticatedProfile(Long id) {
         User user = getViewableUser(id);
         RiotAccount riotAccount = user.getRiotAccount();

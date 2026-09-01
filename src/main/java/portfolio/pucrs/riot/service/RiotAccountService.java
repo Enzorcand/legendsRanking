@@ -16,16 +16,21 @@ import portfolio.pucrs.riot.entity.RiotAccount;
 import portfolio.pucrs.riot.exception.DuplicateRiotAccountException;
 import portfolio.pucrs.riot.exception.RiotAccountAlreadyLinkedException;
 import portfolio.pucrs.riot.exception.RiotAccountNotLinkedException;
+import portfolio.pucrs.riot.exception.SyncCooldownException;
 import portfolio.pucrs.riot.repository.PlayerStatsRepository;
 import portfolio.pucrs.riot.repository.RankedStatsRepository;
 import portfolio.pucrs.riot.repository.RiotAccountRepository;
 import portfolio.pucrs.user.repository.UserRepository;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional
 public class RiotAccountService {
 
     private static final Logger log = LoggerFactory.getLogger(RiotAccountService.class);
+    private static final Duration SYNC_COOLDOWN = Duration.ofMinutes(2);
 
     private final RiotAccountRepository riotAccountRepository;
     private final RankedStatsRepository rankedStatsRepository;
@@ -99,6 +104,30 @@ public class RiotAccountService {
         }
 
         return toResponse(saved);
+    }
+
+    public RiotAccountResponse syncAccount(Long userId) {
+        RiotAccount riotAccount = riotAccountRepository.findByUserId(userId)
+                .orElseThrow(RiotAccountNotLinkedException::new);
+
+        LocalDateTime now = LocalDateTime.now();
+        if (riotAccount.getLastSyncedAt() != null) {
+            Duration elapsed = Duration.between(riotAccount.getLastSyncedAt(), now);
+            if (elapsed.compareTo(SYNC_COOLDOWN) < 0) {
+                throw new SyncCooldownException(SYNC_COOLDOWN.minus(elapsed).toSeconds() + 1);
+            }
+        }
+
+        // lastSyncedAt is stamped before the syncs run, so a Riot API failure still starts the
+        // cooldown — otherwise a failing sync could be retried in a tight loop against the API.
+        riotAccount.setLastSyncedAt(now);
+        riotAccountRepository.save(riotAccount);
+
+        rankedSyncService.syncRankedStats(riotAccount);
+        matchSyncService.syncMatches(riotAccount);
+        playerStatsService.recalculate(riotAccount);
+
+        return toResponse(riotAccount);
     }
 
     public void unlinkAccount(Long userId) {

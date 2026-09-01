@@ -13,6 +13,7 @@ import portfolio.pucrs.riot.exception.DuplicateRiotAccountException;
 import portfolio.pucrs.riot.exception.RiotAccountAlreadyLinkedException;
 import portfolio.pucrs.riot.exception.RiotAccountNotLinkedException;
 import portfolio.pucrs.riot.exception.RiotApiException;
+import portfolio.pucrs.riot.exception.SyncCooldownException;
 import portfolio.pucrs.user.exception.PlayerNotFoundException;
 
 import java.time.Instant;
@@ -49,6 +50,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RiotApiException.class)
     public ResponseEntity<Map<String, Object>> handleRiotApiException(RiotApiException e) {
         return errorResponse(HttpStatus.valueOf(e.getStatus()), e.getMessage());
+    }
+
+    @ExceptionHandler(SyncCooldownException.class)
+    public ResponseEntity<Map<String, Object>> handleSyncCooldown(SyncCooldownException e) {
+        return errorResponse(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> errorResponse(HttpStatus status, String message) {

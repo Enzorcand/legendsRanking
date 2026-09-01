@@ -14,15 +14,18 @@ import portfolio.pucrs.riot.entity.RiotAccount;
 import portfolio.pucrs.riot.exception.DuplicateRiotAccountException;
 import portfolio.pucrs.riot.exception.RiotAccountAlreadyLinkedException;
 import portfolio.pucrs.riot.exception.RiotAccountNotLinkedException;
+import portfolio.pucrs.riot.exception.SyncCooldownException;
 import portfolio.pucrs.riot.repository.PlayerStatsRepository;
 import portfolio.pucrs.riot.repository.RankedStatsRepository;
 import portfolio.pucrs.riot.repository.RiotAccountRepository;
 import portfolio.pucrs.user.entity.User;
 import portfolio.pucrs.user.repository.UserRepository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -190,5 +193,52 @@ class RiotAccountServiceTest {
         when(riotAccountRepository.findByUserId(1L)).thenReturn(Optional.empty());
 
         assertThrows(RiotAccountNotLinkedException.class, () -> riotAccountService.unlinkAccount(1L));
+    }
+
+    @Test
+    void syncsAnAccountThatWasNeverSyncedBefore() {
+        RiotAccount riotAccount = new RiotAccount();
+        riotAccount.setGameName("Raposa");
+        riotAccount.setTagLine("BR1");
+        riotAccount.setRegion(Region.BR1);
+        when(riotAccountRepository.findByUserId(1L)).thenReturn(Optional.of(riotAccount));
+
+        RiotAccountResponse response = riotAccountService.syncAccount(1L);
+
+        assertEquals(new RiotAccountResponse("Raposa", "BR1", Region.BR1), response);
+        verify(rankedSyncService).syncRankedStats(riotAccount);
+        verify(matchSyncService).syncMatches(riotAccount);
+        verify(playerStatsService).recalculate(riotAccount);
+        assertNotNull(riotAccount.getLastSyncedAt());
+    }
+
+    @Test
+    void rejectsSyncingWhenTheCooldownHasNotElapsed() {
+        RiotAccount riotAccount = new RiotAccount();
+        riotAccount.setLastSyncedAt(LocalDateTime.now().minusSeconds(30));
+        when(riotAccountRepository.findByUserId(1L)).thenReturn(Optional.of(riotAccount));
+
+        assertThrows(SyncCooldownException.class, () -> riotAccountService.syncAccount(1L));
+        verify(rankedSyncService, never()).syncRankedStats(any());
+        verify(matchSyncService, never()).syncMatches(any());
+        verify(playerStatsService, never()).recalculate(any());
+    }
+
+    @Test
+    void allowsSyncingWhenTheCooldownHasElapsed() {
+        RiotAccount riotAccount = new RiotAccount();
+        riotAccount.setLastSyncedAt(LocalDateTime.now().minusMinutes(3));
+        when(riotAccountRepository.findByUserId(1L)).thenReturn(Optional.of(riotAccount));
+
+        riotAccountService.syncAccount(1L);
+
+        verify(rankedSyncService).syncRankedStats(riotAccount);
+    }
+
+    @Test
+    void rejectsSyncingWhenTheUserHasNoRiotAccount() {
+        when(riotAccountRepository.findByUserId(1L)).thenReturn(Optional.empty());
+
+        assertThrows(RiotAccountNotLinkedException.class, () -> riotAccountService.syncAccount(1L));
     }
 }

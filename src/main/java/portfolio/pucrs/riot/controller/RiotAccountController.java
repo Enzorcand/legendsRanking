@@ -34,4 +34,10 @@ public class RiotAccountController {
         riotAccountService.unlinkAccount(AuthenticatedUser.id(authentication));
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/sync")
+    public ResponseEntity<RiotAccountResponse> sync(Authentication authentication) {
+        RiotAccountResponse response = riotAccountService.syncAccount(AuthenticatedUser.id(authentication));
+        return ResponseEntity.ok(response);
+    }
 }

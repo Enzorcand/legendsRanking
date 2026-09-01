@@ -61,6 +61,9 @@ public class RiotAccount {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "last_synced_at")
+    private LocalDateTime lastSyncedAt;
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();
