@@ -46,7 +46,7 @@ class AuthServiceTest {
 
     @Test
     void registersAUserWithAHashedPasswordAndNormalizedEmail() {
-        when(userRepository.existsByEmailIgnoreCase("aluno@pucrs.br")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("aluno@edu.pucrs.br")).thenReturn(false);
         when(courseRepository.findById(1L)).thenReturn(Optional.of(activeCourse()));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
@@ -55,7 +55,7 @@ class AuthServiceTest {
         });
 
         UserSummaryResponse response = authService.register(
-                new RegisterRequest("Ana Raposa", " ALUNO@PUCRS.BR ", "senhaSegura1", 1L));
+                new RegisterRequest("Ana Raposa", " ALUNO@EDU.PUCRS.BR ", "senhaSegura1", 1L));
 
         assertEquals(new UserSummaryResponse(10L, "Ana Raposa"), response);
         verify(userRepository).save(any(User.class));
@@ -71,36 +71,36 @@ class AuthServiceTest {
     @Test
     void rejectsRegistrationWithShortPassword() {
         assertThrows(InvalidRegistrationException.class, () -> authService.register(
-                new RegisterRequest("Ana Raposa", "aluno@pucrs.br", "123", 1L)));
+                new RegisterRequest("Ana Raposa", "aluno@edu.pucrs.br", "123", 1L)));
     }
 
     @Test
     void rejectsRegistrationWithDuplicateEmail() {
-        when(userRepository.existsByEmailIgnoreCase("aluno@pucrs.br")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("aluno@edu.pucrs.br")).thenReturn(true);
 
         assertThrows(EmailAlreadyRegisteredException.class, () -> authService.register(
-                new RegisterRequest("Ana Raposa", "aluno@pucrs.br", "senhaSegura1", 1L)));
+                new RegisterRequest("Ana Raposa", "aluno@edu.pucrs.br", "senhaSegura1", 1L)));
     }
 
     @Test
     void rejectsRegistrationWithUnknownOrInactiveCourse() {
-        when(userRepository.existsByEmailIgnoreCase("aluno@pucrs.br")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("aluno@edu.pucrs.br")).thenReturn(false);
         when(courseRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(InvalidCourseException.class, () -> authService.register(
-                new RegisterRequest("Ana Raposa", "aluno@pucrs.br", "senhaSegura1", 99L)));
+                new RegisterRequest("Ana Raposa", "aluno@edu.pucrs.br", "senhaSegura1", 99L)));
     }
 
     @Test
     void logsInWithCorrectCredentialsAndReturnsAToken() {
         User user = new User();
         user.setId(5L);
-        user.setEmail("aluno@pucrs.br");
+        user.setEmail("aluno@edu.pucrs.br");
         user.setPasswordHash(passwordEncoder.encode("senhaSegura1"));
         user.setActive(true);
-        when(userRepository.findByEmailIgnoreCase("aluno@pucrs.br")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("aluno@edu.pucrs.br")).thenReturn(Optional.of(user));
 
-        AuthResponse response = authService.login(new LoginRequest("aluno@pucrs.br", "senhaSegura1"));
+        AuthResponse response = authService.login(new LoginRequest("aluno@edu.pucrs.br", "senhaSegura1"));
 
         assertEquals(Optional.of(5L), jwtService.parseUserId(response.token()));
     }
@@ -109,33 +109,33 @@ class AuthServiceTest {
     void rejectsLoginWithWrongPassword() {
         User user = new User();
         user.setId(5L);
-        user.setEmail("aluno@pucrs.br");
+        user.setEmail("aluno@edu.pucrs.br");
         user.setPasswordHash(passwordEncoder.encode("senhaSegura1"));
         user.setActive(true);
-        when(userRepository.findByEmailIgnoreCase("aluno@pucrs.br")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("aluno@edu.pucrs.br")).thenReturn(Optional.of(user));
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(
-                new LoginRequest("aluno@pucrs.br", "wrong-password")));
+                new LoginRequest("aluno@edu.pucrs.br", "wrong-password")));
     }
 
     @Test
     void rejectsLoginForUnknownEmail() {
-        when(userRepository.findByEmailIgnoreCase("ghost@pucrs.br")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("ghost@edu.pucrs.br")).thenReturn(Optional.empty());
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(
-                new LoginRequest("ghost@pucrs.br", "senhaSegura1")));
+                new LoginRequest("ghost@edu.pucrs.br", "senhaSegura1")));
     }
 
     @Test
     void rejectsLoginForInactiveUser() {
         User user = new User();
         user.setId(5L);
-        user.setEmail("aluno@pucrs.br");
+        user.setEmail("aluno@edu.pucrs.br");
         user.setPasswordHash(passwordEncoder.encode("senhaSegura1"));
         user.setActive(false);
-        when(userRepository.findByEmailIgnoreCase("aluno@pucrs.br")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("aluno@edu.pucrs.br")).thenReturn(Optional.of(user));
 
         assertThrows(InvalidCredentialsException.class, () -> authService.login(
-                new LoginRequest("aluno@pucrs.br", "senhaSegura1")));
+                new LoginRequest("aluno@edu.pucrs.br", "senhaSegura1")));
     }
 }
